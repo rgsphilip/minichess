@@ -17,6 +17,7 @@ public class Runner {
         //negamax:<depth> -> player uses negamax to a specified depth
         //negamaxAb:<depth> -> player uses negamax with alphabeta pruning to a certain depth
         //negamaxTTableAb:<depth> -> player uses negamax with alphabeta + a t-table
+        //--playIMCS mochi mochi accept 15658 B 6
 
         if (Objects.equals(args[0], "--help")) {
             System.out.println("help coming soon!");

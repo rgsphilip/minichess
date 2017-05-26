@@ -5,7 +5,7 @@ import java.util.Random;
  * Created by rPhilip on 4/24/17.
  */
 public class Board {
-    enum Color {WHITE, BLACK};
+    enum Color {WHITE, BLACK}
 
     //board to initialize game if we are not given a board.
     char[][] board = {
@@ -78,11 +78,6 @@ public class Board {
         }
     }
 
-    public void updateBoardWithOpponentMove(String str) {
-        Move move = strToMove(str);
-        makeMove(move);
-    }
-
     //checkPieceList will be performed each time we get the board back from the opponent, because it's possible
     //that they have taken one of our pieces.
     private void checkPieceList() {
@@ -112,14 +107,7 @@ public class Board {
         }
     }
 
-    public String makeRandomMove() {
-        announceIfThereIsAWinner();
-        ArrayList<Move> moves = moves();
-        int randomMoveIx = randomGenerator.nextInt(moves.size());
-        Move move = moves.get(randomMoveIx);
-        makeMove(move);
-        return moveToString(move);
-    }
+
 
     private void announceIfThereIsAWinner() {
         if (!isKingStillOnBoard()) {
@@ -218,8 +206,42 @@ public class Board {
         return c;
     }
 
+    ///////////////////////////// TYPES OF PLAYERS ////////////////////////////
 
-    //method to evaluate positions
+    //Random Player
+    public String makeRandomMove() {
+        announceIfThereIsAWinner();
+        ArrayList<Move> moves = moves();
+        int randomMoveIx = randomGenerator.nextInt(moves.size());
+        Move move = moves.get(randomMoveIx);
+        makeMove(move);
+        return moveToString(move);
+    }
+
+    //Negamax Player
+    public String negaMaxPlayer(int depth) {
+        int score = -100000;
+        int compare = 0;
+        ArrayList<Move> moves = moves();
+        if (moves.isEmpty()) {
+            return "no more moves";
+        }
+        Move bestMove = null;
+        for (Move move : moves) {
+            char clobberedSquare = board[move.getToSquare().getxCord()][move.getToSquare().getyCord()];
+            makeMove(move);
+            compare = -negamax(depth-1);
+            undoMove(move, clobberedSquare);
+            if (compare > score) {
+                bestMove = move;
+                score = compare;
+            }
+        }
+        makeMove(bestMove);
+        return moveToString(bestMove);
+    }
+
+    //Recursive Negamax Function
     private int negamax(int depth) {
         ArrayList<Move> moves = moves();
         if (moves.isEmpty() || !isKingStillOnBoard()) {
@@ -245,28 +267,34 @@ public class Board {
         return maxVal;
     }
 
-    public String negaMaxPlayer(int depth) {
-        int score = -100000;
-        int compare = 0;
-        ArrayList<Move> moves = moves();
-        if (moves.isEmpty()) {
-            return "no more moves";
-        }
+    //Alphabeta Player
+    public String alphaBetaPlayer(int depth) {
         Move bestMove = null;
+        int alpha = -100000;
+        int beta = 100000;
+        int score = 0;
+
+        ArrayList<Move> moves = moves();
         for (Move move : moves) {
             char clobberedSquare = board[move.getToSquare().getxCord()][move.getToSquare().getyCord()];
             makeMove(move);
-            compare = -negamax(depth-1);
+            score = -1 * alphaBeta(depth - 1, -1 * beta, -1 * alpha);
             undoMove(move, clobberedSquare);
-            if (compare > score) {
+
+            if (score > alpha) {
                 bestMove = move;
-                score = compare;
+                alpha = score;
             }
+        }
+        if (bestMove == null) {
+            int randomMoveIx = randomGenerator.nextInt(moves.size());
+            bestMove = moves.get(randomMoveIx);
         }
         makeMove(bestMove);
         return moveToString(bestMove);
     }
 
+    //Alphabeta Recursive Function
     private int alphaBeta(int depth, int alpha, int beta) {
         if (depth == 0) {
             return calculateMaterialValue();
@@ -278,6 +306,7 @@ public class Board {
             makeMove(move);
             score = Math.max(score, -1 * alphaBeta(depth - 1, -1 * beta, -1 * alpha));
             undoMove(move, clobberedSquare);
+            alpha = Math.max(alpha, score);
             if (alpha >= beta) {
                 break;
             }
@@ -285,32 +314,9 @@ public class Board {
         return score;
     }
 
-    public String alphaBetaPlayer(int depth) {
-        Move bestMove = null;
-        int alpha = -100000;
-        int beta = 100000;
-        int bestScore = alpha;
 
-        ArrayList<Move> moves = moves();
-        for (Move move : moves) {
-            char clobberedSquare = board[move.getToSquare().getxCord()][move.getToSquare().getyCord()];
-            makeMove(move);
-            int score = -1 * alphaBeta(depth - 1, -1 * beta, -1 * alpha);
-            undoMove(move, clobberedSquare);
 
-            if (score > bestScore) {
-                bestMove = move;
-                bestScore = score;
-            }
-        }
-        if (bestMove == null) {
-            int randomMoveIx = randomGenerator.nextInt(moves.size());
-            bestMove = moves.get(randomMoveIx);
-        }
-        makeMove(bestMove);
-        return moveToString(bestMove);
-    }
-
+    ////////////////////////// MOVES /////////////////////////////////
     //make a move
     public void makeMove(Move move) {
         Square moveFrom = move.getFromSquare();
@@ -331,7 +337,6 @@ public class Board {
                 }
             }
         }
-
         board[moveTo.getxCord()][moveTo.getyCord()] = board[moveFrom.getxCord()][moveFrom.getyCord()];
         board[moveFrom.getxCord()][moveFrom.getyCord()] = '.';
         if (onMove == Color.WHITE) {
@@ -487,6 +492,41 @@ public class Board {
             }
         }
         return (whiteKing && blackKing);
+    }
+
+    private boolean isMyKingStillOnBoard() {
+        //i.e., did I lose?
+        if (onMove == Color.WHITE) {
+            for (Piece piece: whitePieceList) {
+                if (piece.getPieceType() == 'K') {
+                    return true;
+                }
+            }
+        } else {
+            for (Piece piece: blackPieceList) {
+                if (piece.getPieceType() == 'k') {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean isOppKingStillOnBoard() {
+        if (onMove == Color.BLACK) {
+            for (Piece piece: whitePieceList) {
+                if (piece.getPieceType() == 'K') {
+                    return true;
+                }
+            }
+        } else {
+            for (Piece piece: blackPieceList) {
+                if (piece.getPieceType() == 'k') {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /******************** HELPER METHODS FOR MOVEMENT ********************/
