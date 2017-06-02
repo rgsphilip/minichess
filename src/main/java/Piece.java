@@ -9,6 +9,7 @@ public class Piece {
         this.pieceType = piece;
         this.xCord = xCord;
         this.yCord = yCord;
+
     }
 
     public int getxCord() {

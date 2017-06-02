@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Random;
 
 /**
@@ -229,9 +230,13 @@ public class Board {
         Move bestMove = null;
         for (Move move : moves) {
             char clobberedSquare = board[move.getToSquare().getxCord()][move.getToSquare().getyCord()];
-            makeMove(move);
+            boolean isMovePromotingPawn = makeMove(move);
             compare = -negamax(depth-1);
-            undoMove(move, clobberedSquare);
+            if (isMovePromotingPawn) {
+                undoPawnPromotionMove(move, clobberedSquare);
+            } else {
+                undoMove(move, clobberedSquare);
+            }
             if (compare > score) {
                 bestMove = move;
                 score = compare;
@@ -253,7 +258,7 @@ public class Board {
         int maxVal = -100000;
         for (Move move : moves) {
             char clobberedSquare = board[move.getToSquare().getxCord()][move.getToSquare().getyCord()];
-            this.makeMove(move);
+            boolean isMovePromotionPawn = this.makeMove(move);
             int value;
             if (!isKingStillOnBoard()) {
                 this.undoMove(move, clobberedSquare);
@@ -261,7 +266,11 @@ public class Board {
             } else {
                 value = -1 * negamax(depth - 1);
             }
-            this.undoMove(move, clobberedSquare);
+            if (isMovePromotionPawn) {
+                this.undoPawnPromotionMove(move, clobberedSquare);
+            } else {
+                this.undoMove(move, clobberedSquare);
+            }
             maxVal = Math.max(maxVal, value);
         }
         return maxVal;
@@ -277,9 +286,13 @@ public class Board {
         ArrayList<Move> moves = moves();
         for (Move move : moves) {
             char clobberedSquare = board[move.getToSquare().getxCord()][move.getToSquare().getyCord()];
-            makeMove(move);
+            boolean isMovePawnPromotion = makeMove(move);
             score = -1 * alphaBeta(depth - 1, -1 * beta, -1 * alpha);
-            undoMove(move, clobberedSquare);
+            if (isMovePawnPromotion) {
+                undoPawnPromotionMove(move, clobberedSquare);
+            } else {
+                undoMove(move, clobberedSquare);
+            }
 
             if (score > alpha) {
                 bestMove = move;
@@ -303,9 +316,13 @@ public class Board {
         ArrayList<Move> moves = moves();
         for(Move move : moves) {
             char clobberedSquare = board[move.getToSquare().getxCord()][move.getToSquare().getyCord()];
-            makeMove(move);
+            boolean isMovePawnPromotion = makeMove(move);
             score = Math.max(score, -1 * alphaBeta(depth - 1, -1 * beta, -1 * alpha));
-            undoMove(move, clobberedSquare);
+            if (isMovePawnPromotion) {
+                undoPawnPromotionMove(move, clobberedSquare);
+            } else {
+                undoMove(move, clobberedSquare);
+            }
             alpha = Math.max(alpha, score);
             if (alpha >= beta) {
                 break;
@@ -318,9 +335,10 @@ public class Board {
 
     ////////////////////////// MOVES /////////////////////////////////
     //make a move
-    public void makeMove(Move move) {
+    public boolean makeMove(Move move) {
         Square moveFrom = move.getFromSquare();
         Square moveTo = move.getToSquare();
+        boolean isPawnPromoted = false;
         //find piece in piecelist
         ArrayList<Piece> pieceList;
         if (onMove == Color.WHITE) {
@@ -329,14 +347,35 @@ public class Board {
             pieceList = blackPieceList;
             numMoves++;
         }
+        Piece piece = null;
+        //updating the piece list
         for (int i = 0; i < pieceList.size(); i++) {
             if (pieceList.get(i).getxCord() == moveFrom.getxCord()) {
                 if (pieceList.get(i).getyCord() == moveFrom.getyCord()) {
+                    piece = pieceList.get(i);
                     pieceList.get(i).setxCord(moveTo.getxCord());
                     pieceList.get(i).setyCord(moveTo.getyCord());
+
                 }
             }
         }
+        assert piece != null;
+        //pawn promotion
+        if (piece.getPieceType() == 'p') { //something wrong here?
+            if (piece.getxCord() == 5) {
+                piece.setPieceType('q');
+                board[moveFrom.getxCord()][moveFrom.getyCord()] = 'q';
+                isPawnPromoted = true;
+            }
+        }
+        if (piece.getPieceType() == 'P') {
+            if (piece.getxCord() == 0) {
+                piece.setPieceType('Q');
+                board[moveFrom.getxCord()][moveFrom.getyCord()] = 'Q';
+                isPawnPromoted = true;
+            }
+        }
+        //updating the char board
         board[moveTo.getxCord()][moveTo.getyCord()] = board[moveFrom.getxCord()][moveFrom.getyCord()];
         board[moveFrom.getxCord()][moveFrom.getyCord()] = '.';
         if (onMove == Color.WHITE) {
@@ -344,27 +383,13 @@ public class Board {
         } else {
             onMove = Color.WHITE;
         }
+        return isPawnPromoted;
     }
 
     //undo a move
-    private void undoMove(Move move, char clobberedSquare) {
+    public void undoMove(Move move, char clobberedSquare) {
         Square moveFrom = move.getFromSquare();
         Square moveTo = move.getToSquare();
-        //find piece in piecelist
-//        ArrayList<Piece> pieceList;
-//        if (onMove == Color.WHITE) {
-//            pieceList = whitePieceList;
-//        } else {
-//            pieceList = blackPieceList;
-//        }
-//        for (int i = 0; i < pieceList.size(); i++) {
-//            if (pieceList.get(i).getxCord() == moveTo.getxCord()) {
-//                if (pieceList.get(i).getyCord() == moveTo.getyCord()) {
-//                    pieceList.get(i).setxCord(moveFrom.getxCord());
-//                    pieceList.get(i).setyCord(moveFrom.getyCord());
-//                }
-//            }
-//        }
 
         board[moveFrom.getxCord()][moveFrom.getyCord()] = board[moveTo.getxCord()][moveTo.getyCord()];
         board[moveTo.getxCord()][moveTo.getyCord()] = clobberedSquare;
@@ -379,7 +404,30 @@ public class Board {
         } else {
             onMove = Color.WHITE;
         }
+    }
 
+    public void undoPawnPromotionMove(Move move, char clobberedSquare) {
+        Square moveFrom = move.getFromSquare();
+        Square moveTo = move.getToSquare();
+        if (onMove == Color.BLACK) {
+            board[moveTo.getxCord()][moveTo.getyCord()] = 'P';
+        } else {
+            board[moveTo.getxCord()][moveTo.getyCord()] = 'p';
+        }
+
+        board[moveFrom.getxCord()][moveFrom.getyCord()] = board[moveTo.getxCord()][moveTo.getyCord()];
+        board[moveTo.getxCord()][moveTo.getyCord()] = clobberedSquare;
+
+        blackPieceList.clear();
+        whitePieceList.clear();
+        initializePieceList();
+
+        if (onMove == Color.WHITE) {
+            onMove = Color.BLACK;
+            numMoves--;
+        } else {
+            onMove = Color.WHITE;
+        }
     }
 
     //calculating moves
@@ -437,6 +485,10 @@ public class Board {
                     break;
             }
         }
+        if (onMove == Color.BLACK) {
+            Collections.reverse(moves);
+        }
+
         return moves;
     }
 

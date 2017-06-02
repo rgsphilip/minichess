@@ -11,6 +11,8 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -205,14 +207,48 @@ public class Client {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Query the games known to the server for the first game matching the given filter.
+     * @param filter Filter to apply to the list of games known to the server.
+     * @return The first game that matches the given filter.
+     * @throws IOException when the NetworkStream was unexpectedly closed.
+     * @throws RuntimeException When the required response code does not match the one received.
+     */
+    public Optional<IMCSGame> queryForGame(Predicate<IMCSGame> filter) throws IOException {
+        return getGameList().stream().filter(filter).findFirst();
+    }
+
+    /**
+     * Wait until a game was found that matches the given filter.
+     * @param filter Filter to apply to the list of games known to the server.
+     * @return The game that matched the filter.
+     * @throws IOException when the NetworkStream was unexpectedly closed.
+     * @throws RuntimeException When the required response code does not match the one received.
+     */
+    public IMCSGame waitForGame(Predicate<IMCSGame> filter) throws IOException, InterruptedException {
+        Optional<IMCSGame> game = Optional.empty();
+        while(true) {
+            game = queryForGame(filter);
+            if(game.isPresent())
+                return game.get();
+            Thread.sleep(500); //Don't stress the server too much ;)
+        }
+    }
+
+    /**
+     * Get a list of player ratings.
+     * @return A Map from player name to his score.
+     * @throws IOException when the NetworkStream was unexpectedly closed.
+     * @throws RuntimeException When the required response code does not match the one received.
+     */
     public Map<String, Integer> getRatingsList() throws IOException, RuntimeException {
         sendCommand(IMCSCommands.RATINGS);
         awaitResponse().assertHasCode(212);
         return awaitListing().stream()
-            .collect(Collectors.toMap(
-                l -> l.trim().split(" ", 2)[0],
-                l -> Integer.parseInt(l.trim().split(" ", 2)[1])
-            ));
+                .collect(Collectors.toMap(
+                        l -> l.trim().split(" ", 2)[0],
+                        l -> Integer.parseInt(l.trim().split(" ", 2)[1])
+                ));
     }
 
 
@@ -226,7 +262,7 @@ public class Client {
         sendCommand(IMCSCommands.OFFER);
         awaitResponse().assertHasCode(103); // waiting for opponent
         IMCSResponse gameStartResponse = awaitResponse();
-        gameStartResponse.assertHasCode(106); // game started
+        gameStartResponse.assertHasCode(105, 106); // game started
         return gameStartResponse.message.charAt(0);
     }
 
@@ -237,9 +273,9 @@ public class Client {
      * @throws RuntimeException When the required response code does not match the one received.
      */
     public void offerGameAndWait(char player) throws IOException, RuntimeException {
-        sendCommand(IMCSCommands.OFFER);
+        sendCommand(IMCSCommands.OFFER, player);
         awaitResponse().assertHasCode(103); // waiting for opponent
-        awaitResponse().assertHasCode(106); // game started
+        awaitResponse().assertHasCode(105, 106); // game started
     }
 
 

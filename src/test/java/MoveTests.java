@@ -300,4 +300,63 @@ public class MoveTests {
         assertTrue(outputMoves.containsAll(expectedMoves));
     }
 
+    char[][] pawnTest = {
+            {'.', '.', '.', '.', '.'},
+            {'P', '.', '.', '.', '.'},
+            {'.', '.', '.', '.', '.'},
+            {'.', '.', '.', '.', '.'},
+            {'p', '.', '.', '.', '.'},
+            {'.', '.', '.', '.', '.'}
+    };
+
+    @Test
+    public void testQueenPromotionBlack() {
+        Board testBoard = new Board(pawnTest, 'B', 10);
+        ArrayList<Move> moves = testBoard.moves();
+        boolean move = testBoard.makeMove(moves.get(0));
+        assertTrue(move);
+        testBoard.undoPawnPromotionMove(moves.get(0), '.');
+        assertTrue(pawnTest.equals(testBoard.board));
+    }
+
+    @Test
+    public void testQueenPromotionWhite() {
+        Board testBoard = new Board(pawnTest, 'W', 10);
+        ArrayList<Move> moves = testBoard.moves();
+        boolean move = testBoard.makeMove(moves.get(0));
+        assertTrue(move);
+        testBoard.undoPawnPromotionMove(moves.get(0), '.');
+        assertTrue(pawnTest.equals(testBoard.board));
+    }
+
+    char[][] nullProblem = {
+            {'k', 'q', '.', 'n', 'r'},
+            {'p', '.', 'p', 'b', 'p'},
+            {'P', 'p', '.', '.', '.'},
+            {'.', 'P', 'N', 'P', '.'},
+            {'.', '.', '.', '.', 'P'},
+            {'R', '.', 'B', 'Q', 'K'}
+    };
+
+    @Test
+    public void testNullProblem() {
+        Board testBoard = new Board(nullProblem, 'B', 9);
+        ArrayList<Move> moves = testBoard.moves();
+
+//        for (Move move : moves) {
+//            char clobberedSquare = nullProblem[move.getToSquare().getxCord()][move.getToSquare().getyCord()];
+//            boolean isMovePawnPromotion = testBoard.makeMove(move);
+//            if (isMovePawnPromotion) {
+//                testBoard.undoPawnPromotionMove(move, clobberedSquare);
+//            } else {
+//                testBoard.undoMove(move, clobberedSquare);
+//            }
+//        }
+
+        while (testBoard.isKingStillOnBoard()) {
+            testBoard.makeRandomMove();
+        }
+    }
+
+
 }

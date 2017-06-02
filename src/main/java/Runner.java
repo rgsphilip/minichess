@@ -24,43 +24,77 @@ public class Runner {
             System.exit(0);
         }
 
+        //--playself <player1>:<optional param> <player2>:<optional param>
+
         if (Objects.equals(args[0], "--playself")) {
+            Board board = new Board();
+            board.printBoard();
             //program is going to play itself
             switch (args[1]) {
                 case "random":
-                    Board board = new Board();
-                    board.printBoard();
-                    while(true) {
-                        String str = board.makeRandomMove();
-                        System.out.println(str);
-                        board.printBoard();
+                    while(board.isKingStillOnBoard()) {
+                        makeRandomMove(board);
+                        if (board.isKingStillOnBoard()) {
+                            if (args[2].equals("random")) {
+                                makeRandomMove(board);
+                            }
+                            if (args[2].equals("negamax")) {
+                                makeNegamaxMove(board, Integer.parseInt(args[3]));
+                            }
+                            if (args[2].equals("alphaBeta")) {
+                                makeAlphaBetaMove(board, Integer.parseInt(args[3]));
+                            }
+                        } else {
+                            System.out.println("White wins");
+                            System.exit(0);
+                        }
                     }
+                    System.out.println("Black wins");
+                    System.exit(0);
                 case "negamax":
-                    int depth = Integer.parseInt(args[2]);
-                    Board boardNegaMax = new Board();
-                    boardNegaMax.printBoard();
-                    int increment = 0;
-                    while (increment < 81) {
-                        String move = boardNegaMax.negaMaxPlayer(depth);
-                        //System.out.println(str);
-                        System.out.println(move);
-                        boardNegaMax.printBoard();
-                        increment++;
+                    int depthW = Integer.parseInt(args[2]);
+
+                    while(board.isKingStillOnBoard()) {
+                        makeNegamaxMove(board, depthW);
+                        if (board.isKingStillOnBoard()) {
+                            if (args[3].equals("random")) {
+                                makeRandomMove(board);
+                            }
+                            if (args[3].equals("negamax")) {
+                                makeNegamaxMove(board, Integer.parseInt(args[4]));
+                            }
+                            if (args[3].equals("alphaBeta")) {
+                                makeAlphaBetaMove(board, Integer.parseInt(args[4]));
+                            }
+                        } else {
+                            System.out.println("White wins");
+                            System.exit(0);
+                        }
                     }
-                    break;
+                    System.out.println("Black wins");
+                    System.exit(0);
                 case "alphaBeta":
-                    int depthAB = Integer.parseInt(args[2]);
-                    Board boardAB = new Board();
-                    boardAB.printBoard();
-                    int incrementAB = 0;
-                    while (incrementAB < 81) {
-                        String move = boardAB.alphaBetaPlayer(depthAB);
-                        //System.out.println(str);
-                        System.out.println(move);
-                        boardAB.printBoard();
-                        incrementAB++;
+                    int depthWh = Integer.parseInt(args[2]);
+
+                    while(board.isKingStillOnBoard()) {
+                        makeAlphaBetaMove(board, depthWh);
+                        if (board.isKingStillOnBoard()) {
+                            if (args[3].equals("random")) {
+                                makeRandomMove(board);
+                            }
+                            if (args[3].equals("negamax")) {
+                                makeNegamaxMove(board, Integer.parseInt(args[4]));
+                            }
+                            if (args[3].equals("alphaBeta")) {
+                                makeAlphaBetaMove(board, Integer.parseInt(args[4]));
+                            }
+                        } else {
+                            System.out.println("White wins");
+                            System.exit(0);
+                        }
                     }
-                    break;
+                    System.out.println("Black wins");
+                    System.exit(0);
             }
 
         }
@@ -117,68 +151,149 @@ public class Runner {
             client.login(username, password);
             if (Objects.equals(args[3], "accept")) {
                 client.accept(args[4]);
-            }
-            Board.Color myColor = Board.Color.BLACK;
+                Board.Color myColor = Board.Color.BLACK;
 
-            if (Objects.equals(args[5], "W")) {
-                myColor = Board.Color.WHITE;
-            }
-
-            int depth = Integer.parseInt(args[6]);
-            Board clientBoard = new Board(myColor);
-            if (myColor == Board.Color.BLACK) {
-                //get move, then make move
-                while (clientBoard.isKingStillOnBoard()) {
-                    String opMove = client.getMove();
-                    clientBoard.makeMove(clientBoard.strToMove(opMove));
-                    clientBoard.printBoard();
-                    if (clientBoard.isKingStillOnBoard()) {
-                        //my king is still on the board
-                        String move = clientBoard.alphaBetaPlayer(depth);
-                        client.sendMove(move);
-                        clientBoard.printBoard();
-                    } else {
-                        //my king is gone :(
-                        System.out.println("mochi lost :(");
-                        client.close();
-                        System.exit(0);
-                    }
+                if (Objects.equals(args[5], "W")) {
+                    myColor = Board.Color.WHITE;
                 }
-                System.out.println("mochi won! :)");
-                client.close();
-                System.exit(0);
-
-            } else {
-                clientBoard.printBoard();
-                while (clientBoard.isKingStillOnBoard()) {
-                    String move = clientBoard.alphaBetaPlayer(depth);
-                    System.out.println(move);
-                    client.sendMove(move);
-                    clientBoard.printBoard();
-                    if (clientBoard.isKingStillOnBoard()) {
-                        //I haven't taken the opponent's king
+                int depth = Integer.parseInt(args[6]);
+                Board clientBoard = new Board(myColor);
+                if (myColor == Board.Color.BLACK) {
+                    //get move, then make move
+                    while (clientBoard.isKingStillOnBoard()) {
                         String opMove = client.getMove();
                         System.out.println(opMove);
                         clientBoard.makeMove(clientBoard.strToMove(opMove));
                         clientBoard.printBoard();
-                    } else {
-                        //I have taken the opponent's king
-                        System.out.println("mochi won! :)");
-                        client.close();
-                        System.exit(0);
+                        if (clientBoard.isKingStillOnBoard()) {
+                            //my king is still on the board
+                            String move = clientBoard.alphaBetaPlayer(depth);
+                            System.out.println(move);
+                            client.sendMove(move);
+                            clientBoard.printBoard();
+                        } else {
+                            //my king is gone :(
+                            System.out.println("mochi lost :(");
+                            client.close();
+                            System.exit(0);
+                        }
                     }
+                    System.out.println("mochi won! :)");
+                    client.close();
+                    System.exit(0);
 
+                } else {
+                    clientBoard.printBoard();
+                    while (clientBoard.isKingStillOnBoard()) {
+                        String move = clientBoard.alphaBetaPlayer(depth);
+                        System.out.println(move);
+                        client.sendMove(move);
+                        clientBoard.printBoard();
+                        if (clientBoard.isKingStillOnBoard()) {
+                            //I haven't taken the opponent's king
+                            String opMove = client.getMove();
+                            System.out.println(opMove);
+                            clientBoard.makeMove(clientBoard.strToMove(opMove));
+                            clientBoard.printBoard();
+                        } else {
+                            //I have taken the opponent's king
+                            System.out.println("mochi won! :)");
+                            client.close();
+                            System.exit(0);
+                        }
+
+                    }
+                    System.out.println("mochi lost :(");
+                    client.close();
+                    System.exit(0);
                 }
-                System.out.println("mochi lost :(");
-                client.close();
-                System.exit(0);
+
+            } else if (args[3].equals("offer")){
+                char[] color = args[4].toCharArray();
+                System.out.println(color[0]);
+                client.offerGameAndWait(color[0]);
+
+                Board.Color myColor = Board.Color.BLACK;
+
+                if (Objects.equals(args[4], "W")) {
+                    myColor = Board.Color.WHITE;
+                }
+                int depth = Integer.parseInt(args[5]);
+                Board clientBoard = new Board();
+                if (myColor == Board.Color.BLACK) {
+                    //get move, then make move
+                    while (clientBoard.isKingStillOnBoard()) {
+                        String opMove = client.getMove();
+                        clientBoard.makeMove(clientBoard.strToMove(opMove));
+                        clientBoard.printBoard();
+                        if (clientBoard.isKingStillOnBoard()) {
+                            //my king is still on the board
+                            String move = clientBoard.alphaBetaPlayer(depth);
+                            client.sendMove(move);
+                            clientBoard.printBoard();
+                        } else {
+                            //my king is gone :(
+                            System.out.println("mochi lost :(");
+                            client.close();
+                            System.exit(0);
+                        }
+                    }
+                    System.out.println("mochi won! :)");
+                    client.close();
+                    System.exit(0);
+                } else {
+                    clientBoard.printBoard();
+                    while (clientBoard.isKingStillOnBoard()) {
+                        String move = clientBoard.alphaBetaPlayer(depth);
+                        System.out.println(move);
+                        client.sendMove(move);
+                        clientBoard.printBoard();
+                        if (clientBoard.isKingStillOnBoard()) {
+                            //I haven't taken the opponent's king
+                            String opMove = client.getMove();
+                            System.out.println(opMove);
+                            clientBoard.makeMove(clientBoard.strToMove(opMove));
+                            clientBoard.printBoard();
+                        } else {
+                            //I have taken the opponent's king
+                            System.out.println("mochi won! :)");
+                            client.close();
+                            System.exit(0);
+                        }
+
+                    }
+                    System.out.println("mochi lost :(");
+                    client.close();
+                    System.exit(0);
+                }
             }
+
+
+
 
 
 
         }
 
 
+    }
+
+    static void makeNegamaxMove(Board board, int depth) {
+        String move = board.negaMaxPlayer(depth);
+        System.out.println(move);
+        board.printBoard();
+    }
+
+    static void makeAlphaBetaMove(Board board, int depth) {
+        String move = board.alphaBetaPlayer(depth);
+        System.out.println(move);
+        board.printBoard();
+    }
+
+    static void makeRandomMove(Board board) {
+        String move = board.makeRandomMove();
+        System.out.println(move);
+        board.printBoard();
     }
 
 }
