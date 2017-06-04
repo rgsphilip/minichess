@@ -23,6 +23,10 @@ public class Board {
     int numMoves = 1;
     int maxNumMoves = 40;
     Color myColor;
+
+    //global var for iterative deepening
+    int ticker = 0;
+
     boolean playOpponent = false;
     //ArrayList<Piece> pieceList = new ArrayList<Piece>();
     ArrayList<Piece> blackPieceList = new ArrayList<>();
@@ -139,6 +143,8 @@ public class Board {
             System.out.print("\n");
         }
     }
+
+    //Translates a Move into a string representation for communicating to IMCS and human readability
     public String moveToString(Move move) {
         String str = "";
         //fromSquare Y is mapped to first char
@@ -151,6 +157,7 @@ public class Board {
         return str;
     }
 
+    //Translates a string chess move into a Move representation to be consumed by the player
     public Move strToMove(String str) {
         //a1-a2
         //columns are a - e
@@ -163,6 +170,7 @@ public class Board {
 
     }
 
+    //Annoyingly long helper methods for move -> str and str -> move translation
     private int tranlateChessRowToCoordinate(char chr) {
         int value = 0; //char value 6
         switch (chr){
@@ -184,7 +192,7 @@ public class Board {
         }
         return value;
     }
-
+    //Annoyingly long helper methods for move -> str and str -> move translation
     private char translateCoordinateToChessRow(int i) {
         char c = '6'; //int value 0
         switch (i) {
@@ -283,6 +291,10 @@ public class Board {
         int beta = 100000;
         int score = 0;
 
+        blackPieceList.clear();
+        whitePieceList.clear();
+        initializePieceList();
+
         ArrayList<Move> moves = moves();
         for (Move move : moves) {
             char clobberedSquare = board[move.getToSquare().getxCord()][move.getToSquare().getyCord()];
@@ -318,6 +330,100 @@ public class Board {
             char clobberedSquare = board[move.getToSquare().getxCord()][move.getToSquare().getyCord()];
             boolean isMovePawnPromotion = makeMove(move);
             score = Math.max(score, -1 * alphaBeta(depth - 1, -1 * beta, -1 * alpha));
+            if (isMovePawnPromotion) {
+                undoPawnPromotionMove(move, clobberedSquare);
+            } else {
+                undoMove(move, clobberedSquare);
+            }
+            alpha = Math.max(alpha, score);
+            if (alpha >= beta) {
+                break;
+            }
+        }
+        return score;
+    }
+
+    //Iterative deepener
+    //will use AlphaBeta...
+    //need to occasionally poll to get time
+    public String iterativelyDeepeningABPlayer() {
+        blackPieceList.clear();
+        whitePieceList.clear();
+        initializePieceList();
+        ticker = 0;
+        Move bestMove = null;
+        Move bestMoveLastIteration = null;
+        long timeLimit;
+        //need most time for midgame
+        if (numMoves < 6) {
+            //four second for opening
+            timeLimit = 2000;
+        } else if (numMoves < 25) {
+            //eight second for midgame
+            timeLimit = 5000;
+        } else {
+            //seven second for endgame
+            timeLimit = 3000;
+        }
+        long endTime = System.currentTimeMillis() + timeLimit;
+
+        int alpha = -100000;
+        int beta = 100000;
+        int score = 0;
+        int depth = 4;
+
+        //need to wrap this in a while or something --------------------------------------------------
+        do {
+            ArrayList<Move> moves = moves();
+            for (Move move : moves) {
+                char clobberedSquare = board[move.getToSquare().getxCord()][move.getToSquare().getyCord()];
+                boolean isMovePawnPromotion = makeMove(move);
+                score = -1 * iDAlphaBeta(depth - 1, -1 * beta, -1 * alpha, timeLimit);
+                if (isMovePawnPromotion) {
+                    undoPawnPromotionMove(move, clobberedSquare);
+                } else {
+                    undoMove(move, clobberedSquare);
+                }
+                //add in a break for a bad score here?
+                if (score > alpha) {
+                    bestMove = move;
+                    alpha = score;
+                }
+            }
+            if (bestMove == null) {
+                int randomMoveIx = randomGenerator.nextInt(moves.size());
+                bestMove = moves.get(randomMoveIx);
+            }
+
+            System.out.println("depth: " + depth);
+            depth++;
+            bestMoveLastIteration = bestMove;
+            //----------------------------------------------------------------------------------------
+        } while (System.currentTimeMillis() < endTime);
+
+        makeMove(bestMoveLastIteration);
+        return moveToString(bestMoveLastIteration);
+    }
+
+    //ID Alphabeta Recursive Function
+    private int iDAlphaBeta(int depth, int alpha, int beta, long timeLimit) {
+        ticker++;
+        if (ticker > 1000) {
+            if (timeLimit > System.currentTimeMillis()) {
+                //end search
+                return 0;
+            }
+            ticker = 0;
+        }
+        if (depth == 0) {
+            return calculateMaterialValue();
+        }
+        int score = -100000;
+        ArrayList<Move> moves = moves();
+        for(Move move : moves) {
+            char clobberedSquare = board[move.getToSquare().getxCord()][move.getToSquare().getyCord()];
+            boolean isMovePawnPromotion = makeMove(move);
+            score = Math.max(score, -1 * iDAlphaBeta(depth - 1, -1 * beta, -1 * alpha, timeLimit));
             if (isMovePawnPromotion) {
                 undoPawnPromotionMove(move, clobberedSquare);
             } else {
