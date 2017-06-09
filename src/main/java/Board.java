@@ -357,13 +357,13 @@ public class Board {
         //need most time for midgame
         if (numMoves < 6) {
             //four second for opening
-            timeLimit = 2000;
-        } else if (numMoves < 25) {
+            timeLimit = 4L * 1000L;
+        } else if (numMoves < 20) {
             //eight second for midgame
-            timeLimit = 5000;
+            timeLimit = 8L * 1000L;
         } else {
-            //seven second for endgame
-            timeLimit = 3000;
+            //five second for endgame
+            timeLimit = 5L * 1000L;
         }
         long endTime = System.currentTimeMillis() + timeLimit;
 
@@ -373,28 +373,35 @@ public class Board {
         int depth = 4;
 
         //need to wrap this in a while or something --------------------------------------------------
+        iterativeAB:
         do {
             ArrayList<Move> moves = moves();
             for (Move move : moves) {
                 char clobberedSquare = board[move.getToSquare().getxCord()][move.getToSquare().getyCord()];
                 boolean isMovePawnPromotion = makeMove(move);
-                score = -1 * iDAlphaBeta(depth - 1, -1 * beta, -1 * alpha, timeLimit);
+                score = -1 * iDAlphaBeta(depth - 1, -1 * beta, -1 * alpha, endTime);
                 if (isMovePawnPromotion) {
                     undoPawnPromotionMove(move, clobberedSquare);
                 } else {
                     undoMove(move, clobberedSquare);
                 }
+
+                if (Math.abs(score) == 20000000) {
+                    System.out.println("breaking d = " + depth);
+                    break iterativeAB;
+                }
+
                 //add in a break for a bad score here?
                 if (score > alpha) {
                     bestMove = move;
                     alpha = score;
                 }
-            }
-            if (bestMove == null) {
-                int randomMoveIx = randomGenerator.nextInt(moves.size());
-                bestMove = moves.get(randomMoveIx);
-            }
 
+            }
+//            if (bestMove == null) {
+//                int randomMoveIx = randomGenerator.nextInt(moves.size());
+//                bestMove = moves.get(randomMoveIx);
+//            }
             System.out.println("depth: " + depth);
             depth++;
             bestMoveLastIteration = bestMove;
@@ -406,12 +413,16 @@ public class Board {
     }
 
     //ID Alphabeta Recursive Function
-    private int iDAlphaBeta(int depth, int alpha, int beta, long timeLimit) {
+    private int iDAlphaBeta(int depth, int alpha, int beta, long endTime) {
         ticker++;
-        if (ticker > 1000) {
-            if (timeLimit > System.currentTimeMillis()) {
+        if (ticker > 100000) {
+//            System.out.println("endtime: " + endTime);
+//            System.out.println("sys time: " + System.currentTimeMillis());
+//            System.out.println("diff: " + (endTime - System.currentTimeMillis()));
+            if (endTime < System.currentTimeMillis()) {
                 //end search
-                return 0;
+                //System.out.println("time is up");
+                return -20000000;
             }
             ticker = 0;
         }
@@ -423,12 +434,17 @@ public class Board {
         for(Move move : moves) {
             char clobberedSquare = board[move.getToSquare().getxCord()][move.getToSquare().getyCord()];
             boolean isMovePawnPromotion = makeMove(move);
-            score = Math.max(score, -1 * iDAlphaBeta(depth - 1, -1 * beta, -1 * alpha, timeLimit));
+            score = Math.max(score, -1 * iDAlphaBeta(depth - 1, -1 * beta, -1 * alpha, endTime));
             if (isMovePawnPromotion) {
                 undoPawnPromotionMove(move, clobberedSquare);
             } else {
                 undoMove(move, clobberedSquare);
             }
+            if (Math.abs(score) == 20000000) {
+                //System.out.println("breaking d = " + depth);
+                break;
+            }
+
             alpha = Math.max(alpha, score);
             if (alpha >= beta) {
                 break;

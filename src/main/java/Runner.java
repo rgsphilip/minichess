@@ -306,55 +306,109 @@ public class Runner {
                 if (Objects.equals(args[4], "W")) {
                     myColor = Board.Color.WHITE;
                 }
-                int depth = Integer.parseInt(args[5]);
-                Board clientBoard = new Board();
-                if (myColor == Board.Color.BLACK) {
-                    //get move, then make move
-                    while (clientBoard.isKingStillOnBoard()) {
-                        System.out.println("**** OPPONENT MOVE ****");
-                        String opMove = client.getMove();
-                        clientBoard.makeMove(clientBoard.strToMove(opMove));
-                        clientBoard.printBoard();
-                        if (clientBoard.isKingStillOnBoard()) {
-                            //my king is still on the board
-                            System.out.println("**** MOCHI MOVE *****");
-                            String move = clientBoard.alphaBetaPlayer(depth);
-                            client.sendMove(move);
-                            clientBoard.printBoard();
-                        } else {
-                            //my king is gone :(
-                            System.out.println("mochi lost :(");
-                            client.close();
-                            System.exit(0);
-                        }
-                    }
-                    System.out.println("mochi won! :)");
-                    client.close();
-                    System.exit(0);
-                } else {
-                    clientBoard.printBoard();
-                    while (clientBoard.isKingStillOnBoard()) {
-                        String move = clientBoard.alphaBetaPlayer(depth);
-                        System.out.println(move);
-                        client.sendMove(move);
-                        clientBoard.printBoard();
-                        if (clientBoard.isKingStillOnBoard()) {
-                            //I haven't taken the opponent's king
+
+                String player = args[5];
+                if (player.equals("AB")) {
+                    int depth = Integer.parseInt(args[6]);
+                    Board clientBoard = new Board();
+                    if (myColor == Board.Color.BLACK) {
+                        //get move, then make move
+                        while (clientBoard.isKingStillOnBoard()) {
+                            System.out.println("**** OPPONENT MOVE ****");
                             String opMove = client.getMove();
-                            System.out.println(opMove);
                             clientBoard.makeMove(clientBoard.strToMove(opMove));
                             clientBoard.printBoard();
-                        } else {
-                            //I have taken the opponent's king
-                            System.out.println("mochi won! :)");
-                            client.close();
-                            System.exit(0);
+                            if (clientBoard.isKingStillOnBoard()) {
+                                //my king is still on the board
+                                System.out.println("**** MOCHI MOVE *****");
+                                String move = clientBoard.alphaBetaPlayer(depth);
+                                client.sendMove(move);
+                                clientBoard.printBoard();
+                            } else {
+                                //my king is gone :(
+                                System.out.println("mochi lost :(");
+                                client.close();
+                                System.exit(0);
+                            }
                         }
+                        System.out.println("mochi won! :)");
+                        client.close();
+                        System.exit(0);
+                    } else {
+                        clientBoard.printBoard();
+                        while (clientBoard.isKingStillOnBoard()) {
+                            String move = clientBoard.alphaBetaPlayer(depth);
+                            System.out.println(move);
+                            client.sendMove(move);
+                            clientBoard.printBoard();
+                            if (clientBoard.isKingStillOnBoard()) {
+                                //I haven't taken the opponent's king
+                                String opMove = client.getMove();
+                                System.out.println(opMove);
+                                clientBoard.makeMove(clientBoard.strToMove(opMove));
+                                clientBoard.printBoard();
+                            } else {
+                                //I have taken the opponent's king
+                                System.out.println("mochi won! :)");
+                                client.close();
+                                System.exit(0);
+                            }
 
+                        }
+                        System.out.println("mochi lost :(");
+                        client.close();
+                        System.exit(0);
                     }
-                    System.out.println("mochi lost :(");
-                    client.close();
-                    System.exit(0);
+                } else if (player.equals("IDAB")) {
+                    Board clientBoard = new Board();
+                    if (myColor == Board.Color.BLACK) {
+                        //get move, then make move
+                        while (clientBoard.isKingStillOnBoard()) {
+                            System.out.println("**** OPPONENT MOVE ****");
+                            String opMove = client.getMove();
+                            clientBoard.makeMove(clientBoard.strToMove(opMove));
+                            clientBoard.printBoard();
+                            if (clientBoard.isKingStillOnBoard()) {
+                                //my king is still on the board
+                                System.out.println("**** MOCHI MOVE *****");
+                                String move = clientBoard.iterativelyDeepeningABPlayer();
+                                client.sendMove(move);
+                                clientBoard.printBoard();
+                            } else {
+                                //my king is gone :(
+                                System.out.println("mochi lost :(");
+                                client.close();
+                                System.exit(0);
+                            }
+                        }
+                        System.out.println("mochi won! :)");
+                        client.close();
+                        System.exit(0);
+                    } else {
+                        clientBoard.printBoard();
+                        while (clientBoard.isKingStillOnBoard()) {
+                            String move = clientBoard.iterativelyDeepeningABPlayer();
+                            System.out.println(move);
+                            client.sendMove(move);
+                            clientBoard.printBoard();
+                            if (clientBoard.isKingStillOnBoard()) {
+                                //I haven't taken the opponent's king
+                                String opMove = client.getMove();
+                                System.out.println(opMove);
+                                clientBoard.makeMove(clientBoard.strToMove(opMove));
+                                clientBoard.printBoard();
+                            } else {
+                                //I have taken the opponent's king
+                                System.out.println("mochi won! :)");
+                                client.close();
+                                System.exit(0);
+                            }
+
+                        }
+                        System.out.println("mochi lost :(");
+                        client.close();
+                        System.exit(0);
+                    }
                 }
             }
 
