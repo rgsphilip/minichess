@@ -1,5 +1,6 @@
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Random;
 
 /**
@@ -23,6 +24,7 @@ public class Board {
     int numMoves = 1;
     int maxNumMoves = 40;
     Color myColor;
+    HashMap<String, TTableElem> tTable = new HashMap<>();
 
     //global var for iterative deepening
     int ticker = 0;
@@ -372,7 +374,6 @@ public class Board {
         int score = 0;
         int depth = 4;
 
-        //need to wrap this in a while or something --------------------------------------------------
         iterativeAB:
         do {
             ArrayList<Move> moves = moves();
@@ -405,7 +406,7 @@ public class Board {
             System.out.println("depth: " + depth);
             depth++;
             bestMoveLastIteration = bestMove;
-            //----------------------------------------------------------------------------------------
+
         } while (System.currentTimeMillis() < endTime);
 
         makeMove(bestMoveLastIteration);
@@ -452,6 +453,198 @@ public class Board {
         }
         return score;
     }
+
+    ////////////////////////// T-TABLES ///////////////////////////////
+
+    //initiate random for onMove = W
+
+    //constants... I think they will be indices?
+    int whiteP = 0;
+    int whiteN = 1;
+    int whiteB = 2;
+    int whiteR = 3;
+    int whiteQ = 4;
+    int whiteK = 5;
+    int blackP = 6;
+    int blackN = 7;
+    int blackB = 8;
+    int blackR = 9;
+    int blackQ = 10;
+    int blackK = 11;
+
+    long[][] zobTable= new long[30][12]; //30 positions, 12 piece possibilities
+    public void initZobTable() {
+        for (int i = 0; i < 30; i++) {
+            for (int j = 0; j < 12; j++) {
+                //initialize random long.
+                //how long is the long??
+            }
+        }
+    }
+
+    public String getBoardState() {
+        //string representation of the board
+        String returnStr = "";
+        if (onMove == Color.BLACK) {
+            returnStr += Integer.toString(numMoves) + " B\n";
+        } else {
+            returnStr += Integer.toString(numMoves) + " W\n";
+        }
+        for(int i = 0; i < numRows; i++) {
+            for (int j = 0; j < numColumns; j++) {
+                returnStr += board[i][j];
+            }
+            returnStr += "\n";
+        }
+        return returnStr;
+    }
+
+    //ID AB TT Player!
+    public String iterativelyDeepeningABPlayerTTable() {
+        blackPieceList.clear();
+        whitePieceList.clear();
+        initializePieceList();
+        ticker = 0;
+        Move bestMove = null;
+        Move bestMoveLastIteration = null;
+        long timeLimit;
+        //need most time for midgame
+        if (numMoves < 6) {
+            //four second for opening
+            timeLimit = 4L * 1000L;
+        } else if (numMoves < 20) {
+            //eight second for midgame
+            timeLimit = 8L * 1000L;
+        } else {
+            //five second for endgame
+            timeLimit = 5L * 1000L;
+        }
+        long endTime = System.currentTimeMillis() + timeLimit;
+
+        int alpha = -100000;
+        int beta = 100000;
+        int score = 0;
+        int depth = 4;
+
+        tTable = new HashMap<String, TTableElem>();
+
+
+        iterativeAB:
+        do {
+            ArrayList<Move> moves = moves();
+            for (Move move : moves) {
+                char clobberedSquare = board[move.getToSquare().getxCord()][move.getToSquare().getyCord()];
+                boolean isMovePawnPromotion = makeMove(move);
+                score = -1 * iDAlphaBeta(depth - 1, -1 * beta, -1 * alpha, endTime);
+                if (isMovePawnPromotion) {
+                    undoPawnPromotionMove(move, clobberedSquare);
+                } else {
+                    undoMove(move, clobberedSquare);
+                }
+
+                if (Math.abs(score) == 20000000) {
+                    System.out.println("breaking d = " + depth);
+                    break iterativeAB;
+                }
+
+                //add in a break for a bad score here?
+                if (score > alpha) {
+                    bestMove = move;
+                    alpha = score;
+                }
+
+            }
+//            if (bestMove == null) {
+//                int randomMoveIx = randomGenerator.nextInt(moves.size());
+//                bestMove = moves.get(randomMoveIx);
+//            }
+            System.out.println("depth: " + depth);
+            depth++;
+            bestMoveLastIteration = bestMove;
+
+        } while (System.currentTimeMillis() < endTime);
+
+        makeMove(bestMoveLastIteration);
+        return moveToString(bestMoveLastIteration);
+    }
+
+    //ID Alphabeta Recursive Function
+    private int iDAlphaBetaTTable(int depth, int alpha, int beta, long endTime) {
+        int initAlpha = alpha;
+        ticker++;
+        if (ticker > 100000) {
+//            System.out.println("endtime: " + endTime);
+//            System.out.println("sys time: " + System.currentTimeMillis());
+//            System.out.println("diff: " + (endTime - System.currentTimeMillis()));
+            if (endTime < System.currentTimeMillis()) {
+                //end search
+                //System.out.println("time is up");
+                return -20000000;
+            }
+            ticker = 0;
+        }
+
+        if (depth == 0) {
+            return calculateMaterialValue();
+        }
+
+        TTableElem elem = tTable.get(getBoardState());
+
+        if (elem != null)  {
+            if (elem.flag == 'E') {
+                return elem.value;
+            } else if (elem.flag == 'L') {
+                alpha = Math.max(alpha, elem.value);
+            } else if (elem.flag == 'U') {
+                beta = Math.min(beta, elem.value);
+            }
+            if (alpha > beta) {
+                return elem.value;
+            }
+        }
+
+
+        int score = -100000;
+        ArrayList<Move> moves = moves();
+        for(Move move : moves) {
+            char clobberedSquare = board[move.getToSquare().getxCord()][move.getToSquare().getyCord()];
+            boolean isMovePawnPromotion = makeMove(move);
+            score = Math.max(score, -1 * iDAlphaBeta(depth - 1, -1 * beta, -1 * alpha, endTime));
+            if (isMovePawnPromotion) {
+                undoPawnPromotionMove(move, clobberedSquare);
+            } else {
+                undoMove(move, clobberedSquare);
+            }
+            if (Math.abs(score) == 20000000) {
+                //System.out.println("breaking d = " + depth);
+                break;
+            }
+
+            alpha = Math.max(alpha, score);
+            if (alpha >= beta) {
+                break;
+            }
+        }
+
+        if (elem == null) {
+            elem = new TTableElem();
+        }
+        elem.value = score;
+        if (score <= initAlpha) {
+            elem.flag = 'U';
+        } else if (score >= beta) {
+            elem.flag = 'L';
+        } else {
+            elem.flag = 'E';
+        }
+        elem.depth = depth;
+        tTable.put(getBoardState(), elem);
+        return score;
+    }
+
+
+
+
 
 
 
@@ -576,7 +769,7 @@ public class Board {
             int yCord = piece.getyCord();
             switch (Character.toLowerCase(piece.getPieceType())) {
                 case 'p':
-                    //pawns. color check performed above with pawnMove. TODO: Need to do some sort of check for queen promotion.
+                    //pawns. color check performed above with pawnMove.
                     int moveForward = xCord + pawnMove;
                     //can the pawn move forward?
                     if (isSquareOnTheBoard(moveForward, yCord) && board[moveForward][yCord] == '.') {
@@ -611,6 +804,8 @@ public class Board {
             Collections.reverse(moves);
         }
 
+        Collections.shuffle(moves);
+
         return moves;
     }
 
@@ -624,9 +819,13 @@ public class Board {
         return whiteValue - blackValue;
     }
 
-    int getMaterialValueForSide(ArrayList<Piece> pieceList) {
+    private int getMaterialValueForSide(ArrayList<Piece> pieceList) {
         int value = 0;
         for (Piece piece: pieceList) {
+            if (!isMyKingStillOnBoard()) {
+                return -100000;
+            }
+
             switch (Character.toLowerCase(piece.getPieceType())) {
                 case 'p':
                     value += 100;

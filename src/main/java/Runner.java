@@ -96,7 +96,6 @@ public class Runner {
                     System.out.println("Black wins");
                     System.exit(0);
                 case "IDAB":
-
                     while(board.isKingStillOnBoard()) {
                         makeIDABMove(board);
                         if (board.isKingStillOnBoard()) {
@@ -111,6 +110,9 @@ public class Runner {
                             }
                             if (args[2].equals("alphaBeta")) {
                                 makeAlphaBetaMove(board, Integer.parseInt(args[3]));
+                            }
+                            if (args[2].equals("IDABTT")) {
+                                makeIDABMoveTTable(board);
                             }
                         } else {
                             System.out.println("White wins");
@@ -353,7 +355,6 @@ public class Runner {
                                 client.close();
                                 System.exit(0);
                             }
-
                         }
                         System.out.println("mochi lost :(");
                         client.close();
@@ -411,15 +412,7 @@ public class Runner {
                     }
                 }
             }
-
-
-
-
-
-
         }
-
-
     }
 
     static void makeNegamaxMove(Board board, int depth) {
@@ -441,6 +434,12 @@ public class Runner {
     }
     static void makeIDABMove(Board board) {
         String move = board.iterativelyDeepeningABPlayer();
+        System.out.println(move);
+        board.printBoard();
+    }
+
+    static void makeIDABMoveTTable(Board board) {
+        String move = board.iterativelyDeepeningABPlayerTTable();
         System.out.println(move);
         board.printBoard();
     }
