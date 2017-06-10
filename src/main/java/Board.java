@@ -24,7 +24,8 @@ public class Board {
     int numMoves = 1;
     int maxNumMoves = 40;
     Color myColor;
-    HashMap<String, TTableElem> tTable = new HashMap<>();
+    HashMap<Long, TTableElem> tTable = new HashMap<>();
+    long zob;
 
     //global var for iterative deepening
     int ticker = 0;
@@ -40,6 +41,8 @@ public class Board {
         onMove = Color.WHITE;
         randomGenerator = new Random();
         initializePieceList();
+        initZobTable();
+        zob = calcZobristHash();
     }
 
     public Board(Color myColor) {
@@ -48,6 +51,8 @@ public class Board {
         randomGenerator = new Random();
         initializePieceList();
         playOpponent = true;
+        initZobTable();
+        zob = calcZobristHash();
     }
 
     //receive a board from someone else
@@ -61,6 +66,8 @@ public class Board {
         this.numMoves = numMoves;
         initializePieceList();
         randomGenerator = new Random();
+        initZobTable();
+        zob = calcZobristHash();
     }
 
     //Initialize the pieces on the board for both white and black
@@ -403,7 +410,7 @@ public class Board {
 //                int randomMoveIx = randomGenerator.nextInt(moves.size());
 //                bestMove = moves.get(randomMoveIx);
 //            }
-            System.out.println("depth: " + depth);
+            //System.out.println("depth: " + depth);
             depth++;
             bestMoveLastIteration = bestMove;
 
@@ -456,47 +463,100 @@ public class Board {
 
     ////////////////////////// T-TABLES ///////////////////////////////
 
-    //initiate random for onMove = W
+    //utilized Simon's slides and Wikipedia for zobrist hashing algorithm:
+    //en.wikipedia.org/wiki/Zobrist_hashing
 
-    //constants... I think they will be indices?
-    int whiteP = 0;
-    int whiteN = 1;
-    int whiteB = 2;
-    int whiteR = 3;
-    int whiteQ = 4;
-    int whiteK = 5;
-    int blackP = 6;
-    int blackN = 7;
-    int blackB = 8;
-    int blackR = 9;
-    int blackQ = 10;
-    int blackK = 11;
+    //initiate random for onMoves
+    private long onMoveW = new Random().nextLong();
+    private long onMoveB = new Random().nextLong();
 
-    long[][] zobTable= new long[30][12]; //30 positions, 12 piece possibilities
-    public void initZobTable() {
-        for (int i = 0; i < 30; i++) {
-            for (int j = 0; j < 12; j++) {
-                //initialize random long.
-                //how long is the long??
+    //constants
+    private int whiteP = 0;
+    private int whiteN = 1;
+    private int whiteB = 2;
+    private int whiteR = 3;
+    private int whiteQ = 4;
+    private int whiteK = 5;
+    private int blackP = 6;
+    private int blackN = 7;
+    private int blackB = 8;
+    private int blackR = 9;
+    private int blackQ = 10;
+    private int blackK = 11;
+    private int empty = 12;
+
+    private long[][][] zobTable= new long[numRows][numColumns][13]; //30 positions, 12 piece possibilities + empty
+    private void initZobTable() {
+        for (int i = 0; i < numRows; i++) {
+            for (int k = 0; k < numColumns; k++) {
+                for (int j = 0; j < 12; j++) {
+                    //initialize random long.
+                    zobTable[i][k][j] = new Random().nextLong();
+                }
             }
         }
     }
 
-    public String getBoardState() {
-        //string representation of the board
-        String returnStr = "";
+    private long calcZobristHash() {
+        long zob = 0;
         if (onMove == Color.BLACK) {
-            returnStr += Integer.toString(numMoves) + " B\n";
+            zob ^= onMoveB;
         } else {
-            returnStr += Integer.toString(numMoves) + " W\n";
+            zob ^= onMoveW;
         }
-        for(int i = 0; i < numRows; i++) {
+        for (int i = 0; i < numRows; i++) {
             for (int j = 0; j < numColumns; j++) {
-                returnStr += board[i][j];
+                char b = board[i][j];
+                long zVal = zobTable[i][j][zobristIndexHelper(board[i][j])];
+                zob ^= zVal;
+
             }
-            returnStr += "\n";
         }
-        return returnStr;
+        return zob;
+    }
+
+    private int zobristIndexHelper(char b) {
+        if (b == 'P') {
+            return whiteP;
+        } else if (b == 'R') {
+            return whiteR;
+        } else if (b == 'N') {
+            return whiteN;
+        } else if (b == 'B') {
+            return whiteB;
+        } else if (b == 'Q') {
+            return whiteQ;
+        } else if (b == 'K') {
+            return whiteK;
+        } else if (b == 'p') {
+            return blackP;
+        } else if (b == 'r') {
+            return blackR;
+        } else if (b == 'n') {
+            return blackN;
+        } else if (b == 'b') {
+            return blackB;
+        } else if (b == 'q') {
+            return blackQ;
+        } else if (b == 'k') {
+            return blackK;
+        } else if (b == '.') {
+            return empty;
+        }
+        return 0;
+    }
+
+    private void incrementalZobUpdate(Move move, char clobberedPiece) {
+        char newPieceInDestination = board[move.getToSquare().getxCord()][move.getToSquare().getyCord()];
+        //xor out side on move
+        zob ^= onMoveW ^ onMoveB;
+        //xor out source
+        zob ^= zobTable[move.getFromSquare().getxCord()][move.getFromSquare().getyCord()][zobristIndexHelper(newPieceInDestination)];
+        zob ^= zobTable[move.getFromSquare().getxCord()][move.getFromSquare().getyCord()][zobristIndexHelper('.')];
+        //xor out destination
+        zob ^= zobTable[move.getToSquare().getxCord()][move.getToSquare().getyCord()][zobristIndexHelper(clobberedPiece)];
+        zob ^= zobTable[move.getToSquare().getxCord()][move.getToSquare().getyCord()][zobristIndexHelper(newPieceInDestination)];
+
     }
 
     //ID AB TT Player!
@@ -510,14 +570,14 @@ public class Board {
         long timeLimit;
         //need most time for midgame
         if (numMoves < 6) {
-            //four second for opening
-            timeLimit = 4L * 1000L;
+            //two second for opening
+            timeLimit = 2L * 1000L;
         } else if (numMoves < 20) {
-            //eight second for midgame
-            timeLimit = 8L * 1000L;
+            //four second for midgame
+            timeLimit = 4L * 1000L;
         } else {
-            //five second for endgame
-            timeLimit = 5L * 1000L;
+            //three second for endgame
+            timeLimit = 3L * 1000L;
         }
         long endTime = System.currentTimeMillis() + timeLimit;
 
@@ -526,8 +586,6 @@ public class Board {
         int score = 0;
         int depth = 4;
 
-        tTable = new HashMap<String, TTableElem>();
-
 
         iterativeAB:
         do {
@@ -535,13 +593,18 @@ public class Board {
             for (Move move : moves) {
                 char clobberedSquare = board[move.getToSquare().getxCord()][move.getToSquare().getyCord()];
                 boolean isMovePawnPromotion = makeMove(move);
-                score = -1 * iDAlphaBeta(depth - 1, -1 * beta, -1 * alpha, endTime);
+                long oldZob = zob;
+                //update zob
+                incrementalZobUpdate(move, clobberedSquare);
+
+                score = -1 * iDAlphaBetaTTable(depth - 1, -1 * beta, -1 * alpha, endTime);
                 if (isMovePawnPromotion) {
                     undoPawnPromotionMove(move, clobberedSquare);
                 } else {
                     undoMove(move, clobberedSquare);
                 }
-
+                zob = oldZob;
+                //
                 if (Math.abs(score) == 20000000) {
                     System.out.println("breaking d = " + depth);
                     break iterativeAB;
@@ -554,11 +617,8 @@ public class Board {
                 }
 
             }
-//            if (bestMove == null) {
-//                int randomMoveIx = randomGenerator.nextInt(moves.size());
-//                bestMove = moves.get(randomMoveIx);
-//            }
-            System.out.println("depth: " + depth);
+
+            //System.out.println("depth: " + depth);
             depth++;
             bestMoveLastIteration = bestMove;
 
@@ -573,12 +633,7 @@ public class Board {
         int initAlpha = alpha;
         ticker++;
         if (ticker > 100000) {
-//            System.out.println("endtime: " + endTime);
-//            System.out.println("sys time: " + System.currentTimeMillis());
-//            System.out.println("diff: " + (endTime - System.currentTimeMillis()));
             if (endTime < System.currentTimeMillis()) {
-                //end search
-                //System.out.println("time is up");
                 return -20000000;
             }
             ticker = 0;
@@ -588,7 +643,7 @@ public class Board {
             return calculateMaterialValue();
         }
 
-        TTableElem elem = tTable.get(getBoardState());
+        TTableElem elem = tTable.get(zob);
 
         if (elem != null)  {
             if (elem.flag == 'E') {
@@ -603,18 +658,26 @@ public class Board {
             }
         }
 
-
         int score = -100000;
         ArrayList<Move> moves = moves();
         for(Move move : moves) {
             char clobberedSquare = board[move.getToSquare().getxCord()][move.getToSquare().getyCord()];
             boolean isMovePawnPromotion = makeMove(move);
+
+            long oldZob = zob;
+            //update zob
+            incrementalZobUpdate(move, clobberedSquare);
+
             score = Math.max(score, -1 * iDAlphaBeta(depth - 1, -1 * beta, -1 * alpha, endTime));
             if (isMovePawnPromotion) {
                 undoPawnPromotionMove(move, clobberedSquare);
             } else {
                 undoMove(move, clobberedSquare);
             }
+
+            //update zob
+            zob = oldZob;
+
             if (Math.abs(score) == 20000000) {
                 //System.out.println("breaking d = " + depth);
                 break;
@@ -626,27 +689,25 @@ public class Board {
             }
         }
 
+
         if (elem == null) {
             elem = new TTableElem();
         }
         elem.value = score;
         if (score <= initAlpha) {
+            //upper bound
             elem.flag = 'U';
         } else if (score >= beta) {
+            //lower bound
             elem.flag = 'L';
         } else {
+            //exact value
             elem.flag = 'E';
         }
         elem.depth = depth;
-        tTable.put(getBoardState(), elem);
+        tTable.put(zob, elem);
         return score;
     }
-
-
-
-
-
-
 
     ////////////////////////// MOVES /////////////////////////////////
     //make a move
@@ -762,7 +823,7 @@ public class Board {
             pieceList = blackPieceList;
         }
         assert(pieceList != null);
-        //generate moves! TODO: add in heuristics for ordering!
+        //generate moves!
         for (Piece piece : pieceList) {
             Square fromSquare = new Square(piece.getxCord(), piece.getyCord());
             int xCord = piece.getxCord();
@@ -809,7 +870,6 @@ public class Board {
         return moves;
     }
 
-    //TODO: Make this more sophisticated
     private int calculateMaterialValue() {
         int blackValue = getMaterialValueForSide(blackPieceList);
         int whiteValue = getMaterialValueForSide(whitePieceList);
@@ -822,9 +882,6 @@ public class Board {
     private int getMaterialValueForSide(ArrayList<Piece> pieceList) {
         int value = 0;
         for (Piece piece: pieceList) {
-            if (!isMyKingStillOnBoard()) {
-                return -100000;
-            }
 
             switch (Character.toLowerCase(piece.getPieceType())) {
                 case 'p':
@@ -1077,8 +1134,4 @@ public class Board {
         }
         return false;
     }
-
-
-
-
 }
